@@ -33,7 +33,10 @@
 	
 	
 
-      
+ 
+
+czy_lampka_miga    equ   0
+ 
 lampka_port	equ	PORTD
 wyjscie_led       equ         0   
 lampka_port	equ	PORTD
@@ -462,7 +465,7 @@ wylacz_led_timer3
 
          
         
-         INCLUDE  "libs\lcd4bit.asm"
+         INCLUDE  "libs/lcd4bit.asm"
         
          
          
@@ -491,9 +494,12 @@ begin
          
          movlw    b'10011111'
          movwf    TRISD
-         
-	bcf	TRISD,lampka_bit
+        
+      IF  czy_lampka_miga == 1
+        	bcf	TRISD,lampka_bit
          bcf      TRISD,wyjscie2
+         ENDIF
+         
 	;bf	TRISD,wyjscie2
          
          clrf     LATD
@@ -620,7 +626,6 @@ CCP_init
          ;BCF     
          
 ;zegary         
-         ;movlw	b'10000001'
          movlw	b'10000001'
 ;mnoznik * 4 wtedy jedno zliczenie to 52 ms         
       movwf	T0CON
@@ -644,7 +649,7 @@ Timer3_init
       movwf       ktore_zliczenie_tmr3_do_pomiar
       
       
-         movlw    b'01111111'
+         movlw    b'01111011'
          movwf    T4CON
 	
          
