@@ -183,6 +183,7 @@ czy_wywoluje_inicjacje_ds_call               equ      1
 czy_czytam_ID_DS1             equ   2     
 czekam_na_odczyt_DS1          equ   3        
 odczytaj_pomiar_DS1           equ   4
+wyswietl_wartosc_dziesietna   equ   5
              
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;markers2
 czy_wlaczyc_przekaznik        equ   0             
@@ -446,7 +447,7 @@ wykryto_timer3_led
       movwf ile_zliczen_tmr3_do_sekundy
       
             ;clrf  T3CON
-            
+        retfie    
       btfsc	LATD,wyjscie_led
 	goto	wylacz_led_timer3
 
@@ -466,7 +467,9 @@ wylacz_led_timer3
          
         
          INCLUDE  "libs/lcd4bit.asm"
-        
+          INCLUDE  "libs/dzielenie.asm"
+         INCLUDE  "libs/mnozenie.asm"
+         INCLUDE  "libs/hextodec.asm"
          
          
          
@@ -649,7 +652,7 @@ Timer3_init
       movwf       ktore_zliczenie_tmr3_do_pomiar
       
       
-         movlw    b'01111011'
+         movlw    b'01111111'
          movwf    T4CON
 	
          
@@ -1407,19 +1410,32 @@ odbierz_pomiary_temp
       
 odbierz_pomiary_temp_show_data
          
-         ;LFSR     FSR2, dane_odebrane_z_ds
-         ;call     zamien_dane_na_temp
-
+         call     check_busy4bit
+         movlw    linia_dolna
+         call  send
+         
+         LFSR     FSR2, dane_odebrane_z_ds
+         call     zamien_dane_na_temp
+        
+        
+         call     check_busy4bit
+         movlw    linia_dolna
+         call  send
+        
          LFSR     FSR1, dane_odebrane_z_ds
          movf     jak_duzo_bajtow_odbieram_z_ds,w
          movwf     n
          
          call     check_busy4bit
-         movlw    linia_dolna
+         movlw    linia_gorna
          call  send
          
          call     petla_wyswietlania_odebr_bajt
          
+;wlacz czekanie 1 sekunde zanim wyswietli wartosc numeryczna
+         
+         
+         bsf      markers_pomiary,wyswietl_wartosc_dziesietna
          return
 
 
@@ -1546,7 +1562,188 @@ check_CRC_DS_loop
 
 
 
+         
+         
+         
+         
+         
+         
+         
        
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+       
+    
+zamien_dane_na_temp
+         ;bajt m³odszy
+         
+         movff    INDF2,wynik01
+         ;zapisuje w temp_ulamek sam mlodsz¹ po³ówkê pierwszego bajtu
+         ;temperatury
+         movlw    0x0f
+         andwf    wynik01,w
+         movwf    temp_ulamek
+         
+         swapf    POSTINC2,w
+         andlw    0x0f
+         movwf    temp_1
+         
+         movlw    0x0f
+         andwf    INDF2,w
+         movwf    temp_10
+         swapf    temp_10,w
+         addwf    temp_1,f
+         
+         ;w bajcie temp_1 jest liczba okreœlaj¹ca szesnastkowo temp
+         movf     temp_1,w
+         call     hex2dec
+         
+         
+         call        check_busy4bit 
+          
+         movf     dec100,w
+         bz       zamien_dane_na_temp_send10
+         call     zamien_na_hex
+         
+         call     write_lcd
+         
+        
+         
+zamien_dane_na_temp_send10         
+        call        check_busy4bit 
+         movf     dec10,w
+         bz       zamien_dane_na_temp_send1
+         
+         
+         
+        
+         call     zamien_na_hex
+         
+         call     write_lcd
+         
+         
+zamien_dane_na_temp_send1   
+      call        check_busy4bit 
+      
+            movf     dec1,w
+         call     zamien_na_hex         
+         
+           call     write_lcd
+         
+         call        check_busy4bit 
+               
+         movlw    "."
+         call       write_lcd
+         
+         
+         
+         call        check_busy4bit 
+         movf     temp_ulamek,w
+         call     zamien_ulamek_dziesietnie
+         ;call       write_lcd
+         
+         
+         
+         return
+         
+
+
+         
+zamien_ulamek_dziesietnie
+        ;zasada jest bardzo prosta
+        ;trzeba pomno¿yæ wartoœæ 625 przez liczbe w ulamku i zamienic na dziesietna wartosc
+        
+        movwf   operandl
+        clrf    operandh
+        movlw   0x2
+        movwf   mnozonah
+        movlw   0x71
+        movwf   mnozonal
+        
+        
+        movf    operandl,w
+        
+        call    mnozenie
+        
+        
+        
+        ;dziele przez  100
+        ;wtedy otrzymuje ilosc setek i to dalej przerabiam przez hex2dec
+        movff    wynik1,dzielonah
+        movff    wynik1,dec10
+        movff   wynik, dzielona
+        movff   wynik, dec1
+        movlw    0x64
+        call    dzielenie
+        ;na razie przechowuje w dec10 i dec1 wynik ulamka
+        
+        
+        movff    wynik1,dzielonah
+        movf    wynik,w
+        call    hex2dec
+        
+         ; call        check_busy4bit 
+          
+         ; movf     dec100,w
+         
+         ; call     zamien_na_hex
+         
+         ; call     write_lcd
+         
+        
+         
+zamien_ulamek_na_temp_send10         
+        
+        
+        call        check_busy4bit 
+         movf     dec10,w
+         
+         
+         
+         
+        
+         call     zamien_na_hex
+         
+         call     write_lcd
+         
+         
+zamien_ulamek_na_temp_send1   
+      call        check_busy4bit 
+      
+            movf     dec1,w
+         call     zamien_na_hex         
+         
+           call     write_lcd
+        
+        
+        ; movf   wynik,w
+        ; movwf   dec100
+         ; call     zamien_na_hex         
+         ; call     write_lcd
+         
+         ;mnoze ilosc cyfr x1000 i odejmuje od wczesniej wymnozonych 
+         
+         
+         
+         
+        return
+
+
+
+
+
+
+
          
          
          
