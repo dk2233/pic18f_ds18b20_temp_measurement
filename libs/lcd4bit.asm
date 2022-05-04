@@ -6,6 +6,9 @@
 
 ;dla procesora 
 
+    include "project_config.inc"
+
+LCD_CODE     CODE
 wait
       ;mamy 256*256*4*4/20e6 = 52 ms
         
@@ -541,3 +544,5 @@ lcd_init_KS066
         
         
         return  
+
+    END
