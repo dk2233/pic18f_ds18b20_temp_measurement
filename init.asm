@@ -1,5 +1,8 @@
-START_SECTION  code
+
 include "project_config.inc"
+include "init.inc"
+
+START_SECTION  code
 init_main
 ;prescaling set to 1:256
 	
@@ -165,14 +168,14 @@ CCP_init
          clrf     T3CON
          
 Timer3_init                      
-                           ;ustawienie zegara tmr3
-                           
-                           
-                           ;zegar odpowiada za przyciski
+           ;ustawienie zegara tmr3
+           
+           
+           ;zegar odpowiada za przyciski
             movlw       b'01110001'
             movwf       T3CON
-	movlw       ile_zliczen_TMR3
-      movwf ile_zliczen_tmr3_do_sekundy
+            movlw       ile_zliczen_TMR3
+      movwf ile_zliczen_TMR3_do_sekundy
       
       
       movlw       ile_zliczen_TMR3_do_pomiaru
@@ -181,40 +184,27 @@ Timer3_init
       
          movlw    b'01111011'
          movwf    T4CON
-	
-         
-         
          
          clrf     odebrano_liter
-         
-         
-         
-         
          clrf     markers2
-
-         
          
          ;wlaczam przerwania
-         
          clrf     PIR1
-         
          clrf     PIE1
          ;usart
          bcf      PIE1,RC1IE
          
          ;timer4
          bcf      PIE4,TMR4IE
-            bsf      PIE2,TMR3IE
+         bsf      PIE2,TMR3IE
          ;timer4
          bcf      PIE4,TMR4IE
          
-         
-         
-         
          bcf      INTCON,TMR0IE
          
-        
-         
+         ;ustawienia ds18b20            
+         movlw    8
+         movwf    jak_duzo_bajtow_odbieram_z_ds
          goto board_start
 
          end
