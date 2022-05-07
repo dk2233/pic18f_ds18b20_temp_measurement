@@ -1,4 +1,8 @@
-    include "project_config.inc"
+
+
+
+    #include "times.inc"
+
 
 WAIT_CODE       CODE
 czekaj_2_sekundy

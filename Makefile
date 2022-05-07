@@ -3,17 +3,40 @@ LINK= gplink
 
 OBJDIR:=_build
 
+SCRIPT:=linker.lkr 
+
 OPT=--mpasm-compatible -c
 
 OUT=temp.hex
 
-vpath %.asm temp_18f_ds18b20 lcd4bit
+FILES = times.asm\
+	   	init.asm\
+	  	libs/lcd4bit.asm\
+		ds18b20_driver.asm\
+		temp_18f_ds18b20.asm
+ 
+#libs/lcd4bit.asm
 
+OBJECTS:= $(patsubst %.asm, %.o, $(FILES))
+#OBJS := %(addprefix $(OBJDIR)/,
 FOLDERS = libs
 
-$(OBJDIR)/%.o: %.asm
+
+
+all: $(OUT)
+
+
+%.o: %.asm
 	@echo $(%.asm)
 	$(ASM) $(OPT) $< -o $@
 
-temp.hex: $(OBJDIR)/%.o
-	$(ASM) $^ - o $(OUT)
+$(OUT): $(OBJECTS)
+	@echo $^
+	$(LINK) --map -s $(SCRIPT) -o $(OUT) $(OBJECTS) 
+
+.PHONY: clean
+clean:
+	rm *.lst 
+	rm *.o
+	rm *.cod
+	rm *.hex

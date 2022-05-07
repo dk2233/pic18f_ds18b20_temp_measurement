@@ -133,3 +133,9 @@ GPR_DATA   UDATA
 dane_lcd    RES 1
 tmp_lcd    RES 1
 n_lcd    RES 1
+
+
+
+
+
+

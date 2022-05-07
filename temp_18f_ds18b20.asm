@@ -7,9 +7,6 @@
 ;odczytuje z niego dane o ID oraz zawartosc pamieci wewnetrznej
 
 
-
-
-
 ;        TMR0  - lampka1
 ;        TMR1     -       
 ;        TMR2     -
@@ -17,9 +14,12 @@
 ;        TMR4     - "miganie" wyjscia testowego
 
 
-
-LIST   P=PIC18F46K80
-include  "p18f46k80.inc"
+    include "project_config.inc"
+    include "data.inc"
+    include "ds18b20_driver.inc"
+    ;INCLUDE  "libs/lcd.inc"
+    include "libs/lcd_if.inc"
+    include "ds18b20_driver_if.inc"
 
  CONFIG RETEN=OFF, XINST=OFF, FOSC=INTIO2, CANMX=PORTB, SOSCSEL=DIG, WDTEN = OFF, MSSPMSK = MSK5 ,MCLRE = ON
  ;,DEBUG=ON
@@ -33,79 +33,8 @@ include  "p18f46k80.inc"
 	
 	
 
- 
-
-czy_lampka_miga    equ   0
- 
-lampka_port	equ	PORTD
-wyjscie_led       equ         0   
-lampka_port	equ	PORTD
-port_wyjscie2     equ      PORTD
-latch_ds1820      equ      LATD
-port_ds1820      equ      PORTD
-latch_klawisz1    equ      LATE
-port_klawisz1    equ      PORTE
-port_przekaznika  equ         PORTB
-
-czujnik_ds1820_1  equ      1
-czujnik_ds1820_2  equ      2
-czujnik_ds1820_3  equ      3
-
-
-port_klawiszy     equ      4
-klawisz1          equ      0
-przekaznik11       equ         0
-przekaznik12       equ         1
-przekaznik21       equ         2
-przekaznik22       equ         3
-przekaznik31       equ         4
-przekaznik32       equ         5
-
-
-
-
-
-;;                                1, DL (1 - 8 bit, 0 -4 bit), N - ilosc linii (1 - 2 linie), F = font   
-set_4bit		  equ      b'00100000' ;  4bit, 2 linie,font 5x8
-;;;                                 DCB  D = display 0 -wylacz, Cursor = 1/0 Blinking=1/0 
-display_set         equ      b'00001100' ;ustawia blinking,cursor,
-
-;;;ustawiam entry                           I,S 
-set_entry           equ             b'00000110' ;increment I=1, Shift = 1/0
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;						ustawienie LCD
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;definicja bitow uzywanych w 4 bitowym przesylaniu 0 - uzywany 1 - nieuzywany
-;zwiazane z opcja kasowania
-ktore_bity_uzywane_na_lcd     equ   0x0f
-ktore_bity_lcd_tris           equ   0x0f
-normalne_ustawienie_tris_lcd  equ   b'11110000'
-
-
-ile_znakow        equ      16
-port_lcd          equ         PORTC
-latch_lcd               equ     LATC     
-port_lcd_e        equ      PORTD
-latch_lcd_e             equ    LATD
-port_lcd_rw       equ      PORTD
-latch_lcd_rw             equ    LATD
-port_lcd_rs       equ      PORTA
-latch_lcd_rs             equ    LATA
-
-tris_lcd          equ      TRISC
-Tris_ds1820       equ      TRISD
-
-
-ile_zliczen_TMR3        equ   0x05
-
-ile_zliczen_TMR3_do_pomiaru        equ   0x20
-
-enable            equ      6
-rs                equ      5
-rw                equ      5
-
-
+    extern czekaj_2_sekundy
+    extern init_main
 
 lampka_bit	equ	0
 wyjscie2 	equ	4
@@ -136,26 +65,6 @@ display_off 	      equ	b'00001000'
 
 
 
-
-;zalezne od czestotliwosci zegara
-;zeby miec 60us dla
-
-;dla4MHZ
-;t2con_dla_60us           equ   b'00000100'
-;t2con_dla_480us          equ   b'00001100' 
-
-;dla 20MHz
-;*5
-t2con_dla_60us           equ   b'00100100'
-;*10
-t2con_dla_480us          equ   b'01001100'
-
-;0x3f - dla 4 MHz
-;
-;movlw   
-;movwf    T2CON
-czas_oczekiwania_60us         equ   0x3c
-czas_oczekiwania_480us        equ   0xf0
 
 
 
@@ -195,12 +104,9 @@ czy_wlaczyc_przekaznik        equ   0
          fsrh1_temp
          
        czas
-	ile_zliczen_tmr3_do_sekundy
-      ktore_zliczenie_tmr3_do_pomiar
       
 	
          markers
-         markers2
          markers_pomiary   
          
          odebrano_liter
@@ -209,18 +115,13 @@ czy_wlaczyc_przekaznik        equ   0
          tmp7
          
          czas_oczekiwania_przy_wysylanie_DS
-         jak_duzo_bajtow_odbieram_z_ds
-         polecenie_wysylane
          
          
          n
          n1
-         liczba1
          
          
          zliczanie_pomiaru
-         
-         bajt_CRC
          
          temp_100
          temp_10
@@ -251,11 +152,6 @@ czy_wlaczyc_przekaznik        equ   0
          
          mnozonah
          mnozonal
-         
-         dane_lcd 
-         tmp_lcd
-         
-         bajt_ds
          
          
          
@@ -372,7 +268,7 @@ wykryto_t0
          ;incf    do_sekundy,f
 
 ;tu wstawiam ile razy ma byc powtarzana petla co decyduje o ilosci czasu na wlaczenie i wylaczenie - procedura timera
-         decf    zliczanie_pomiaru
+         decf    zliczanie_pomiaru,f
 	;movlw	10h
          
 ;dla 4 Mhz - po 10h	(16*250*256=1024000 cykle czyli 1,000 s) zeruj czas2
@@ -387,29 +283,19 @@ wykryto_t0
        
 wykryto_t4
 ;uzywam do wykrywania czy juz zrobic pomiar
+    bcf      PIR4,TMR4IF
 
-         bcf      PIR4,TMR4IF
-   	
 	btfsc	PORTD,wyjscie2
 	goto	wylacz4
 
 	bsf	PORTD,wyjscie2
-       
-         
-         
-         
 	retfie
          
 wylacz4
 	bcf	LATD,wyjscie2
          
 	retfie  
-         
-         
-         
          goto     wyjscie_przerwanie
-
-
          
 wykryto_timer3
          
@@ -434,12 +320,12 @@ wykryto_timer3
          
          
 wykryto_timer3_led             
-         decf     ile_zliczen_tmr3_do_sekundy,f
+         decf     ile_zliczen_TMR3_do_sekundy,f
          btfss    STATUS,Z
          retfie
          
       movlw       ile_zliczen_TMR3
-      movwf ile_zliczen_tmr3_do_sekundy
+      movwf ile_zliczen_TMR3_do_sekundy
       
             ;clrf  T3CON
             
@@ -457,42 +343,29 @@ wylacz_led_timer3
 	bcf	LATD,wyjscie_led
       
 	retfie
+
+        
          
 
-         
-        
-         INCLUDE  "libs/lcd4bit.asm"
-        
-         
+begin
+    call init_main
+
          
 board_start         
-     
-            call     lcd_init_KS066
+        call     lcd_init_KS066
+        movlw    czas_oczekiwania_60us
+        movwf    czas_oczekiwania_przy_wysylanie_DS
            
-
-;ustawienia ds18b20            
-            movlw    8
-         movwf    jak_duzo_bajtow_odbieram_z_ds
+        call     check_busy4bit
+        movlw    linia_gorna
+        call  send
          
-         
-         movlw    czas_oczekiwania_60us
-         movwf    czas_oczekiwania_przy_wysylanie_DS
-                     
-            
-
-           
-            call     check_busy4bit
-            movlw    linia_gorna
-            call  send
-          
-         
-         movlw       HIGH tablica_znakow1
-      movwf       TBLPTRH
+        movlw       HIGH tablica_znakow1
+        movwf       TBLPTRH
       
-      movlw       LOW tablica_znakow1
-      movwf       TBLPTRL
-      
-      call     check_busy4bit
+        movlw       LOW tablica_znakow1
+        movwf       TBLPTRL
+        call     check_busy4bit
       
 petla_napis1
       TBLRD       *+
@@ -508,18 +381,15 @@ petla_napis1
          ; call     check_busy4bit
             ; movlw    linia_dolna
 koncze_wyswietlac    
-
-
-        
-          
       movlw       HIGH tablica_znakow2
       movwf       TBLPTRH
       
       movlw       LOW tablica_znakow2
       movwf       TBLPTRL
       call     check_busy4bit
-            movlw    linia_dolna
-            call  send
+
+      movlw    linia_dolna
+      call  send
       call     check_busy4bit
       
 petla_napis2
@@ -533,41 +403,10 @@ petla_napis2
       goto         petla_napis2
       
 koncze_wyswietlac2            
-     
-
        bsf      INTCON,GIE
       bsf      INTCON,PEIE
-     
-
-     
       call     czekaj_2_sekundy
-
-
          
-         
-tablica_znakow1
-         db       " pomiar temp ",0
-         
-         
-tablica_znakow2
-         db      "....",0
-
-
-         
-czekaj_2_sekundy
-;ustawiam TMR0 - na maks zliczanie
-;256*256*256*4/20e6
-       movlw	b'10000111'
-;1,67 s
-      movwf	T0CON
-      
-      bcf   INTCON,TMR0IE
-      bcf   INTCON,TMR0IF
-czekaj_2_sekundy_petla
-      btfss       INTCON,TMR0IF
-      goto        czekaj_2_sekundy_petla
-      
-      
       ;czyszcze ekran
       
       movlw       display_clear
@@ -579,21 +418,17 @@ czekaj_2_sekundy_petla
       ;ustawienia TMR0
     movlw	b'10000011'	
 	movwf	T0CON
-      
-      
-      goto        main
-      
-      
-      
- 
+    goto        main
+
+tablica_znakow1
+         db       " pomiar temp ",0
+         
+         
+tablica_znakow2
+         db      "....",0
 
 
-
- 
-      
-      
-      
-      
+         
       
       
       
@@ -624,340 +459,43 @@ main
       
       
       
-      
-      
-      
-      
-      
-
-;
-
-PIN_HI_1
-        ;input
-        BSF     Tris_ds1820, czujnik_ds1820_1           ; high impedance
-        
-        
-        RETURN
-
-PIN_LO_1
-         ;output
-        BCF     latch_ds1820,czujnik_ds1820_1
-        ;bcf       latch_ds1820,czujnik_ds1820_1
-        
-        BCF     Tris_ds1820, czujnik_ds1820_1          ; low impedance zero
-        
-        
-        RETURN
-        
-send_one_1
-         clrf     TMR2
-         bcf      PIR1,TMR2IF
-         call     PIN_LO_1
-         nop
-         call     PIN_HI_1
-        
-petla_send_one_1
-         btfss    PIR1,TMR2IF        
-         goto     petla_send_one_1
-         
-         return
-
-send_zero_1
-        
-         call     PIN_LO_1
-         clrf     TMR2
-         nop
-         
-         bcf      PIR1,TMR2IF
-         
-         bcf      latch_ds1820,czujnik_ds1820_1
-petla_send_zero_1
-         btfss    PIR1,TMR2IF        
-         goto     petla_send_zero_1
-         call     PIN_HI_1
-         
-         return
-
-    
-
-
-
-       
-
-
-
-
-
-
-       
 blad_inicjacji_ds
          
+      btfss    status_ds18b20,initialization_not_ok
+      return
+      bcf   status_ds18b20,initialization_not_ok
+
       call     check_busy4bit
-         movlw    linia_dolna
-         call  send
-         ;jezeli nie jest 0
-         movlw       HIGH napis_inicjacja_not_OK
-         movwf       TBLPTRH
-      
-         movlw       LOW napis_inicjacja_not_OK
-         movwf       TBLPTRL
+      movlw    linia_dolna
+      call  send
+      ;jezeli nie jest 0
+      movlw       HIGH napis_inicjacja_not_OK
+      movwf       TBLPTRH
+
+      movlw       LOW napis_inicjacja_not_OK
+      movwf       TBLPTRL
       
 wysylac_blad_inicjacji_ds_loop        
-        call     check_busy4bit
+      call     check_busy4bit
             
       ;czytam aktualny adres i zwiekszam
-         TBLRD       *+
+      TBLRD       *+
       
-         movf        TABLAT,w
+      movf        TABLAT,w
          
       ;jezeli 0 to koncz i powrót
-         btfsc    STATUS,Z
-         return
+      btfsc    STATUS,Z
+      return
      
-         call     write_lcd
+      call     write_lcd
      
-         goto        wysylac_blad_inicjacji_ds_loop
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-         
-      
-inicjacja_ds1820_1
-
- 
-         ;bcf      RCSTA1,CREN
-         
-         
-         
-         bcf      Tris_ds1820,czujnik_ds1820_1
-       
-         
-;ustawiam tmr2 na zliczanie 2 
-         movlw    czas_oczekiwania_480us
-         
-         movwf    PR2
-         
-;ustawiam 480us         
-         movlw    t2con_dla_480us
-         movwf    T2CON
-         
-         bcf      PIR1,TMR2IF
-;wlaczam przerwanie Tmr2
-         ;bsf      STATUS,RP0
-         ;bsf      PIE1,TMR2IE2
-         ;bcf      STATUS,RP0
-         call     PIN_HI_1
-         call     PIN_LO_1
-;daje znacznik ze dotyczy to inicjacji ds1820
-         ;bsf      znaczniki_ds,inicjacja
-;petla czekania na koniec inicjacji
-petla_inicjacji1_1
-         
-         btfss    PIR1,TMR2IF
-         goto     petla_inicjacji1_1
-;teraz przelaczam sie na odbior danych z ds1820
-         
-         bsf      Tris_ds1820,czujnik_ds1820_1
-         
-         nop
-         bcf      PIR1,TMR2IF
-;sprawdzam czy w ciagu 480us pojawilo sie 0 na porcie czujnika
-petla_inicjacji2_1
-
-         btfss    port_ds1820,czujnik_ds1820_1
-         goto     petla_inicjacji3_1
-         
-         btfss    PIR1,TMR2IF         
-         goto     petla_inicjacji2_1
-         
-         goto     blad_inicjacji_ds
-         
-         
-petla_inicjacji3_1
-         btfsc    port_ds1820,czujnik_ds1820_1
-         goto     inicjacja_ok_1
-         btfss    PIR1,TMR2IF
-         goto     petla_inicjacji3_1
-         
-inicjacja_ok_1
-         ;btfsc    markers_pomiary,czy_wywoluje_inicjacje_ds_call
-         ;return
-         
-         ;btfsc    markers,czy_rozkaz
-         ;goto     wysylanie_danych_rozkaz_1
-
-         ;btfsc    markers,czy_wysylanie_OK
-         ;goto     napisz_ok
-         
-         
-         return
-         
-         
-      
-
-
-
-
-
-
-
-
-
-
-
-         
-         
-;DS18B20
-petla_wysylania_rozkazu_1
-         TBLRD       *+
-      
-         movf        TABLAT,w
-         btfsc    STATUS,Z
-         return                     
-         
-         ;jezeli 0 to skocz do wyswietlania slowa z linii 2
-         movwf     polecenie_wysylane
-         
-         movlw     czas_oczekiwania_60us      
-         ;ustawiam TMR2 na odbieranie
-         movwf    PR2
-         
-;ustawiam 60us         
-         movlw    t2con_dla_60us
-         movwf    T2CON
-         bcf      PIR1,TMR2IF
-         clrf      TMR2
-         movlw     8
-         movwf     n
-         
-petla_sending_pomiar_1
-
-        btfss     polecenie_wysylane,0
-        call      send_zero_1
-        btfsc     polecenie_wysylane,0
-        call      send_one_1
-        bsf       latch_ds1820,czujnik_ds1820_1
-        
-        bcf       STATUS,C
-        rrcf       polecenie_wysylane,f
-        
-        decfsz    n,f
-        goto      petla_sending_pomiar_1
-         
-        goto       petla_wysylania_rozkazu_1
-
-
-        
-        
-        
-
-        
-        
-        
-
+      goto        wysylac_blad_inicjacji_ds_loop
 
       
       
       
       
       
-      
-      
-      
-      
-      
-      
-      
-      
-
-
-
-
-      
-    
-        
-petla_odbioru_rozkazu_1
-         movf     jak_duzo_bajtow_odbieram_z_ds,w
-         movwf    liczba1
-            
-         movlw     czas_oczekiwania_60us
-         movwf    PR2
-         movlw    t2con_dla_60us
-         movwf    T2CON
-         clrf     TMR2
-         bcf      PIR1,TMR2IF   
-        
-;procedura sprawdza czy ds1820 cos wysyla jezeli tak to sprawdza przez 60 us czy jest choc na chwile 0
-;normalnie jezeli ds1820 nic nie wysyla to jest caly czas 1 bez rzadnych zmian
-petla_odbioru_z_ds1820_1
-        movlw     8
-        movwf     n
-        clrf      TMR2
-        clrf      INDF1
-        bcf       PIR1,TMR2IF
-        
-petla_stan_odebranego_bitu_1
-         
-         call     PIN_LO_1
-        
-         nop
-         nop
-         nop
-         
-         call     PIN_HI_1
-         
-         
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         nop
-         
-         btfss    port_ds1820,czujnik_ds1820_1
-         bcf      STATUS,C
-         btfsc    port_ds1820,czujnik_ds1820_1
-         bsf      STATUS,C
-         rrcf     INDF1,f
-         
-czekam_na_kolejny_bit_DS_1
-        btfss    PIR1,TMR2IF
-        goto      czekam_na_kolejny_bit_DS_1
-        
-        bcf       PIR1,TMR2IF
-        
-        decfsz    n,f
-        goto      petla_stan_odebranego_bitu_1
-        incf      FSR1L,f
-        
-;czy juz przeszly wszystkie bajty z DS
-        decfsz    liczba1,f
-        goto      petla_odbioru_z_ds1820_1
-
-         return      
 
 
 
@@ -1007,7 +545,7 @@ rokaz_transferu_numeru_id_1
          ;wylaczam mozliwosc odbioru danych z portu szeregowego
          bcf      RCSTA1,CREN
 
-         movlw    8
+         movlw    how_many_bytes_receives_ds18
          movwf    jak_duzo_bajtow_odbieram_z_ds
          
          movlw       HIGH rozkac_id
@@ -1027,6 +565,8 @@ rokaz_transferu_numeru_id_1
          bsf      markers_pomiary,czy_wywoluje_inicjacje_ds_call
          
          call     inicjacja_ds1820_1
+
+         call   blad_inicjacji_ds
          
          call     petla_wysylania_rozkazu_1
          
@@ -1056,7 +596,7 @@ rokaz_transferu_numeru_id_1
          
 rokaz_send_id_1
          LFSR     FSR1, dane_odebrane_z_ds
-         movf     jak_duzo_bajtow_odbieram_z_ds,w
+         movlw    how_many_bytes_receives_ds18
          movwf     n
 
          LFSR     FSR2, id_czujnika_ds
@@ -1070,7 +610,7 @@ petla_kopiowania_bajt_ID
          
 
          LFSR     FSR1, dane_odebrane_z_ds
-         movf     jak_duzo_bajtow_odbieram_z_ds,w
+         movlw    how_many_bytes_receives_ds18
          movwf     n
          
          call     check_busy4bit
@@ -1273,53 +813,6 @@ petla_wyswietlania_odebr_bajt
         
         
         
-        
-        
-
-check_CRC_DS 
-         clrf  bajt_CRC
-         ;movlw    
-   
-;tablica danych DS18b20 musi byc w FSR2
-check_CRC_DS_loop
-         movf POSTINC2,w   
-         xorwf bajt_CRC,f       
-         movlw 0     
-         
-         btfsc bajt_CRC,0 
-         xorlw 0x5e       
-         
-         btfsc bajt_CRC,1 
-         xorlw 0xbc 
-         
-         btfsc bajt_CRC,2 
-         xorlw 0x61 
-         
-         btfsc bajt_CRC,3 
-         xorlw 0xc2 
-         
-         btfsc bajt_CRC,4 
-         xorlw 0x9d 
-         
-         btfsc bajt_CRC,5 
-         xorlw 0x23 
-         
-         btfsc bajt_CRC,6 
-         xorlw 0x46 
-         
-         btfsc bajt_CRC,7 
-         xorlw 0x8c 
-         
-         movwf bajt_CRC   
-         
-         decfsz n,f 
-         goto check_CRC_DS_loop         
-                     
-
-         ;movwf bajt_CRC         
- 
-
-         return         
 
 
 

@@ -205,7 +205,7 @@ Timer3_init
          ;ustawienia ds18b20            
          movlw    8
          movwf    jak_duzo_bajtow_odbieram_z_ds
-         goto board_start
+         return
 
          end
 
