@@ -125,3 +125,11 @@ linia_dolna	equ	0xc0
 linia_druga	equ	0xc0
 
 
+    Global tmp_lcd
+    Global     dane_lcd 
+    Global     n_lcd 
+
+GPR_DATA   UDATA         
+dane_lcd    RES 1
+tmp_lcd    RES 1
+n_lcd    RES 1
