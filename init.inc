@@ -4,6 +4,7 @@
     Global  odebrano_liter
     Global  markers2
     Global  jak_duzo_bajtow_odbieram_z_ds
+    Global init_main
 
 
 

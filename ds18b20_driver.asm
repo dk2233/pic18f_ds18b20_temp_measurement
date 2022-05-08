@@ -3,6 +3,24 @@
     include "ds18b20_driver.inc"
 
 
+    Global bajt_CRC
+    Global status_ds18b20
+
+GPR_DATA   UDATA
+n_ds18b20   RES   1
+bajt_CRC    RES   1
+jak_duzo_bajtow_odbieram_z_ds   RES   1
+polecenie_wysylane   RES  1
+status_ds18b20       RES  1
+
+
+
+
+    Global inicjacja_ds1820_1
+    Global petla_wysylania_rozkazu_1
+    Global petla_odbioru_rozkazu_1
+    Global check_CRC_DS
+
 DS18B20_CODE    CODE    
 PIN_HI_1
         ;input

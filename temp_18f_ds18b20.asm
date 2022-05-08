@@ -15,12 +15,12 @@
 
 
     include "project_config.inc"
-    include "data.inc"
     include "ds18b20_driver.inc"
     ;INCLUDE  "libs/lcd.inc"
     include "libs/lcd_if.inc"
     include "ds18b20_driver_if.inc"
 
+    include "data.inc"
  CONFIG RETEN=OFF, XINST=OFF, FOSC=INTIO2, CANMX=PORTB, SOSCSEL=DIG, WDTEN = OFF, MSSPMSK = MSK5 ,MCLRE = ON
  ;,DEBUG=ON
  
@@ -35,6 +35,9 @@
 
     extern czekaj_2_sekundy
     extern init_main
+    extern inicjacja_ds1820_1
+
+
 
 lampka_bit	equ	0
 wyjscie2 	equ	4

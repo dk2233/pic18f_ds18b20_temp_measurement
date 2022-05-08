@@ -9,6 +9,12 @@
     include "project_config.inc"
     include "libs/lcd.inc"
 
+
+    Global write_lcd
+    Global lcd_init_KS066
+    Global check_busy4bit
+    Global send
+
 LCD_CODE     CODE
 wait
       ;mamy 256*256*4*4/20e6 = 52 ms
