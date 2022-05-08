@@ -3,7 +3,9 @@
     include "ds18b20_driver.inc"
 
 
+    ;.file "init.asm"
     Global bajt_CRC
+    Global dane_odebrane_z_ds
     Global status_ds18b20
 
 GPR_DATA   UDATA
@@ -12,6 +14,7 @@ bajt_CRC    RES   1
 jak_duzo_bajtow_odbieram_z_ds   RES   1
 polecenie_wysylane   RES  1
 status_ds18b20       RES  1
+dane_odebrane_z_ds   res  30
 
 
 
@@ -20,6 +23,8 @@ status_ds18b20       RES  1
     Global petla_wysylania_rozkazu_1
     Global petla_odbioru_rozkazu_1
     Global check_CRC_DS
+    Global odbierz_pomiary_temp
+    Global wykonaj_pomiar_czujnikiem_DS
 
 DS18B20_CODE    CODE    
 PIN_HI_1
@@ -290,9 +295,82 @@ czekam_na_kolejny_bit_DS_1
 
 
 
-
-
+wykonaj_pomiar_czujnikiem_DS
         
+
+         movlw    9
+         movwf    jak_duzo_bajtow_odbieram_z_ds
+         
+         movlw       HIGH rozkaz_pomiaru
+         movwf       TBLPTRH
+      
+         movlw       LOW rozkaz_pomiaru
+         movwf       TBLPTRL
+         
+         ;najpierw wylij rozkaz pomiaru
+         ;wykorzystuje procedury które dzia³aj¹ po wybraniu wysy³ania danych przez polecenie
+         ;
+         ;        "*D1scc44"
+         
+         call     inicjacja_ds1820_1
+         
+         call     petla_wysylania_rozkazu_1
+
+         
+         ;pozniej czekaj 1 s
+         
+         
+         return
+
+rozkaz_pomiaru         
+         db   0xcc,0x44,0x00
+
+
+
+odbierz_pomiary_temp
+
+         movlw       HIGH rozkaz_odczytu
+         movwf       TBLPTRH
+      
+         movlw       LOW rozkaz_odczytu
+         movwf       TBLPTRL
+         
+         
+         
+         
+         ;najpierw wylij rozkaz pomiaru
+         ;wykorzystuje procedury które dzia³aj¹ po wybraniu wysy³ania danych przez polecenie
+         ;
+         ;        "*D1sccbe"
+         
+         call     inicjacja_ds1820_1
+         
+         
+         ;LFSR     FSR0, dane_odebrane_z_ds
+         
+         call     petla_wysylania_rozkazu_1
+         
+         LFSR     FSR1,dane_odebrane_z_ds
+        
+         movlw    how_many_bytes_receives_ds18
+         movwf    jak_duzo_bajtow_odbieram_z_ds
+         call     petla_odbioru_rozkazu_1
+         
+         
+         ;sprawdz CRC
+         LFSR     FSR2, dane_odebrane_z_ds
+         
+         ;9 bajt to CRC
+         movlw    9
+         call     check_CRC_DS
+        
+         return
+
+
+rozkaz_odczytu
+         db   0xcc,0xbe,0x00
+         
+
         
 
 check_CRC_DS 
@@ -340,6 +418,6 @@ check_CRC_DS_loop
 
          return         
          
-
-
          end
+
+

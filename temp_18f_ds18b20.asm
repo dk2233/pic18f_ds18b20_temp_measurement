@@ -36,6 +36,8 @@
     extern czekaj_2_sekundy
     extern init_main
     extern inicjacja_ds1820_1
+    extern odbierz_pomiary_temp
+    extern wykonaj_pomiar_czujnikiem_DS
 
 
 
@@ -168,10 +170,6 @@ czy_wlaczyc_przekaznik        equ   0
          
          
          
-         
-         cblock   0x300
-         dane_odebrane_z_ds
-         endc 
          
          cblock   0x330
          id_czujnika_ds
@@ -442,17 +440,24 @@ tablica_znakow2
 
 ;glowna petla
 main
-
-         
-         
-      btfsc       markers_pomiary,czy_czytam_ID_DS1
+      btfsc     markers_pomiary,czy_czytam_ID_DS1
       call      rokaz_transferu_numeru_id_1
       
-      btfsc       markers_pomiary,odczytaj_pomiar_DS1
+      btfss     markers_pomiary,odczytaj_pomiar_DS1
+      goto      main
+
+      bcf  markers_pomiary,odczytaj_pomiar_DS1
+      bcf  markers_pomiary,czekam_na_odczyt_DS1
+      bcf  markers_pomiary,czy_wykonuje_pomiar_DS1
+
       call      odbierz_pomiary_temp
-       
+      movf     bajt_CRC,w
+      ;jezeli 0 to jest ok
+      bz      odbierz_pomiary_temp_show_data
          
-	goto	main
+      call    wysylac_napis_CRC_notOK
+      goto	main
+          
 
 
 
@@ -529,9 +534,6 @@ wysylac_napis_CRC_notOK_loop
      
          goto        wysylac_napis_CRC_notOK_loop
 
-         
-         
-
 
 rokaz_transferu_numeru_id_1
 ;najpierw wysy³am polecenie odczytu numeru id z jednego ds-a
@@ -539,25 +541,23 @@ rokaz_transferu_numeru_id_1
       bcf         markers_pomiary,czy_czytam_ID_DS1
 
       call        check_busy4bit 
-        movlw       display_clear
-        call        send
+      movlw       display_clear
+      call        send
             
       call        check_busy4bit 
-      
-      
-         ;wylaczam mozliwosc odbioru danych z portu szeregowego
-         bcf      RCSTA1,CREN
+      ;wylaczam mozliwosc odbioru danych z portu szeregowego
+      bcf      RCSTA1,CREN
 
-         movlw    how_many_bytes_receives_ds18
-         movwf    jak_duzo_bajtow_odbieram_z_ds
-         
-         movlw       HIGH rozkac_id
-         movwf       TBLPTRH
-      
-         movlw       LOW rozkac_id
-         movwf       TBLPTRL
-         
-         ;najpierw wyœlij rozkaz pomiaru
+      movlw    how_many_bytes_receives_ds18
+      movwf    jak_duzo_bajtow_odbieram_z_ds
+
+      movlw       HIGH rozkac_id
+      movwf       TBLPTRH
+
+      movlw       LOW rozkac_id
+      movwf       TBLPTRL
+
+      ;najpierw wyœlij rozkaz pomiaru
          ;wykorzystuje procedury które dzia³aj¹ po wybraniu wysy³ania danych przez polecenie
          ;
          ;        "*D1scc44"
@@ -580,6 +580,8 @@ rokaz_transferu_numeru_id_1
          LFSR     FSR1,dane_odebrane_z_ds
         
          
+         movlw    how_many_bytes_receives_ds18
+         movwf    jak_duzo_bajtow_odbieram_z_ds
          call     petla_odbioru_rozkazu_1
 
          ;sprawdz CRC
@@ -625,105 +627,23 @@ petla_kopiowania_bajt_ID
          
          bsf      markers_pomiary,czy_wykonuje_pomiar_DS1
          goto     wykonaj_pomiar_czujnikiem_DS
-         return
-         
-
-
-
-
-
-
-        
-wykonaj_pomiar_czujnikiem_DS
-        
-
-         movlw    9
-         movwf    jak_duzo_bajtow_odbieram_z_ds
-         
-         movlw       HIGH rozkaz_pomiaru
-         movwf       TBLPTRH
-      
-         movlw       LOW rozkaz_pomiaru
-         movwf       TBLPTRL
-         
-         ;najpierw wyœlij rozkaz pomiaru
-         ;wykorzystuje procedury które dzia³aj¹ po wybraniu wysy³ania danych przez polecenie
-         ;
-         ;        "*D1scc44"
-         
-         bcf    markers,czy_rozkaz
-         
-         
-         call     inicjacja_ds1820_1
-         
-         call     petla_wysylania_rozkazu_1
-
-         
-         ;pozniej czekaj 1 s
-         
          bsf      markers_pomiary,czekam_na_odczyt_DS1
-         
          return
+         
+
+
+rozkac_id
+         db       0x33,0x00
+
+
+
+
+        
 
          
          
          
          
-
-odbierz_pomiary_temp
-
-       bcf  markers_pomiary,odczytaj_pomiar_DS1
-       bcf  markers_pomiary,czekam_na_odczyt_DS1
-       bcf  markers_pomiary,czy_wykonuje_pomiar_DS1
-
-         movlw       HIGH rozkaz_odczytu
-         movwf       TBLPTRH
-      
-         movlw       LOW rozkaz_odczytu
-         movwf       TBLPTRL
-         
-         
-         
-         
-         ;najpierw wyœlij rozkaz pomiaru
-         ;wykorzystuje procedury które dzia³aj¹ po wybraniu wysy³ania danych przez polecenie
-         ;
-         ;        "*D1sccbe"
-         bcf    markers,czy_rozkaz
-         
-         
-         call     inicjacja_ds1820_1
-         
-         
-         ;LFSR     FSR0, dane_odebrane_z_ds
-         
-         call     petla_wysylania_rozkazu_1
-         
-         LFSR     FSR1,dane_odebrane_z_ds
-        
-         
-         call     petla_odbioru_rozkazu_1
-         
-         
-         ;sprawdz CRC
-         LFSR     FSR2, dane_odebrane_z_ds
-         
-         ;9 bajt to CRC
-         movlw    9
-         movwf     n
-         
-         call     check_CRC_DS
-         
-         movf     bajt_CRC,w
-         ;jezeli 0 to jest ok
-         bz      odbierz_pomiary_temp_show_data
-         
-         
-         call    wysylac_napis_CRC_notOK
-        
-        
-        
-         return
 
       
 odbierz_pomiary_temp_show_data
@@ -732,6 +652,7 @@ odbierz_pomiary_temp_show_data
          ;call     zamien_dane_na_temp
 
          LFSR     FSR1, dane_odebrane_z_ds
+         movlw    how_many_bytes_receives_ds18
          movf     jak_duzo_bajtow_odbieram_z_ds,w
          movwf     n
          
@@ -828,14 +749,7 @@ petla_wyswietlania_odebr_bajt
          
          
          
-rozkaz_pomiaru         
-         db   0xcc,0x44,0x00
 
-rozkaz_odczytu
-         db   0xcc,0xbe,0x00
-         
-rozkac_id
-         db       0x33,0x00
          
 napis_CRC_no_OK
          db       "CRC not OK",0

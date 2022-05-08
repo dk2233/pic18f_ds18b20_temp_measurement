@@ -1,8 +1,8 @@
 
 
 
-    #include "times.inc"
-
+    include "times.inc"
+    ;.file "times.asm"
 
 WAIT_CODE       CODE
 czekaj_2_sekundy

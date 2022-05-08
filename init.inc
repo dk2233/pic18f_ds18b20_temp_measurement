@@ -1,5 +1,6 @@
 
 
+    ;.file "init.inc"
     Global  ile_zliczen_TMR3_do_sekundy
     Global  odebrano_liter
     Global  markers2

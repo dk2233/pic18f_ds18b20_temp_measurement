@@ -1,8 +1,8 @@
 ;here set include to define all processor type symbols
 ;
 
-LIST   P=PIC18F46K80
-include  "p18f46k80.inc"
+    LIST   P=PIC18F46K80
+    include  "p18f46k80.inc"
 
 
 lampka_port	equ	PORTD

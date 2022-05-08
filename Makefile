@@ -5,8 +5,8 @@ OBJDIR:=_build
 
 SCRIPT:=linker.lkr 
 
-OPT=--mpasm-compatible -c
-
+OPT= -c
+#--mpasm-compatible
 OUT=temp.hex
 
 FILES = times.asm\
@@ -21,6 +21,8 @@ OBJECTS:= $(patsubst %.asm, %.o, $(FILES))
 #OBJS := %(addprefix $(OBJDIR)/,
 FOLDERS = libs
 
+LINK_DEBUG = 
+#-d
 
 
 all: $(OUT)
@@ -32,7 +34,7 @@ all: $(OUT)
 
 $(OUT): $(OBJECTS)
 	@echo $^
-	$(LINK) --map -s $(SCRIPT) -o $(OUT) $(OBJECTS) 
+	$(LINK) $(LINK_DEBUG)  --map -s $(SCRIPT) -o $(OUT) $(OBJECTS) 
 
 .PHONY: clean
 clean:

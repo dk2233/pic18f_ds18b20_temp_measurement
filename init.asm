@@ -1,6 +1,6 @@
 
-include "project_config.inc"
-include "init.inc"
+    include "project_config.inc"
+    include "init.inc"
 
 START_SECTION  code
 init_main
@@ -205,6 +205,11 @@ Timer3_init
          ;ustawienia ds18b20            
          movlw    8
          movwf    jak_duzo_bajtow_odbieram_z_ds
+
+
+
+
+
          return
 
          end
