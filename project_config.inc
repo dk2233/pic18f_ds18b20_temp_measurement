@@ -91,7 +91,9 @@ t2con_dla_60us           equ   b'00100100'
 ;*10
 t2con_dla_480us          equ   b'01001100'
 
-how_many_bytes_receives_ds18     equ  8
+how_many_bytes_rec_ds18_id     equ  8
+how_many_bytes_rec_ds18_temp     equ  9
+how_many_bytes_ds18_temp_show     equ  8
 
 ;0x3f - dla 4 MHz
 ;

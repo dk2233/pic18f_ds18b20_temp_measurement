@@ -15,6 +15,7 @@
     Global check_busy4bit
     Global send
 
+
 LCD_CODE     CODE
 wait
       ;mamy 256*256*4*4/20e6 = 52 ms
@@ -35,6 +36,7 @@ send4bit
 send
 ;np PORTA bity 0-3  sa uzywane przez 4 bitowy ekran lcd
 ;najpierw wysylane sa 4bity gorne
+    movlb dane_lcd
     movwf    dane_lcd
          ;bsf      port_lcd_e,enable
          
@@ -82,6 +84,7 @@ send
       ENDIF
 
          movlw    ktore_bity_uzywane_na_lcd
+         movlb    dane_lcd
          andwf    dane_lcd,w
          addwf    latch_lcd,f
          
@@ -117,15 +120,18 @@ cmd_off
 clear_line
 ;przed wywolaniem do n_lcd trzeba wrzucic ilosc kasowanych znakow
 ;a w W musi byc adres linii         
+         movlb    dane_lcd
          movwf    dane_lcd
          call     send
          
 clear_line_petla
          call     check_busy4bit
          movlw    " "
+         movlb    dane_lcd
          movwf    dane_lcd
          call     write_lcd
          
+         movlb    n_lcd
          decfsz   n_lcd,f
          goto     clear_line_petla
          
@@ -190,7 +196,9 @@ check
       ENDIF
          
          
+         movlb    tmp_lcd
          movwf    tmp_lcd
+         
          
          
             
@@ -219,9 +227,8 @@ check
          ;bo mlodsza polowke zapisuje
          andlw    0x0f
          
+         movlb    tmp_lcd
          addwf    tmp_lcd,f
-         
-         
             
          btfsc    tmp_lcd,7
          goto     check
@@ -250,6 +257,7 @@ lcd_init_hitachi
 	bcf	INTCON,T0IF
 ;wylaczam przerwania tmr0         
          movlw    3
+         movlb    n_lcd
          movwf    n_lcd
         call     wait     ;fosc/4/256/256 (tak jest ustawiony tmr0) dla 4Mhz 64 ms dla 8 Mhz 32 ms
 		;dwa bity nizsze musza byc zaznaczone przez okolo 64ms
@@ -264,8 +272,8 @@ lcd_init_3_petla
      IF (polozenie_danych_lcd == 0) 
 ;jezli linia LCD jest na dolnych bitach portu przypisanego do LCD, wtedy to co jest
 ;wysylane musi byc najpierw starsze wyslane, wiec to co jest w rejestrze dane_lcd musi byc obrocone tak by starsze bity znalazly sie na miejscy mlodszych (dolnych)
-         movlw    b'00000011'
-	addwf	  port_lcd,f
+        movlw    b'00000011'
+        addwf	  port_lcd,f
 
       ENDIF
            
@@ -279,34 +287,33 @@ lcd_init_3_petla
       ENDIF
 
  	bsf      latch_lcd_e,enable
-         nop
-         nop
-         bcf      latch_lcd_e,enable
-        
-        
-         
-         
-         clrf     TMR0L
-         clrf     TMR0H ;64 ms
+    nop
+    nop
+    bcf      latch_lcd_e,enable
+    
+    
+    clrf     TMR0L
+    clrf     TMR0H ;64 ms
+ 	bcf     INTCON,T0IE
+	bcf  	INTCON,T0IF
+    call     wait
+    
+    clrf     TMR0L
+    clrf     TMR0H ;64 ms
  	bcf    INTCON,T0IE
 	bcf	INTCON,T0IF
-         call     wait
-         
-         clrf     TMR0L
-         clrf     TMR0H ;64 ms
- 	bcf    INTCON,T0IE
-	bcf	INTCON,T0IF
-         call     wait
-         
-         decfsz   n_lcd,f
-         goto     lcd_init_3_petla
+    call     wait
+    
+    movlb    n_lcd
+    decfsz   n_lcd,f
+    goto     lcd_init_3_petla
 
          IF (polozenie_danych_lcd == 0) 
 ;jezli linia LCD jest na dolnych bitach portu przypisanego do LCD, wtedy to co jest
 ;wysylane musi byc najpierw starsze wyslane, wiec to co jest w rejestrze dane_lcd musi byc obrocone tak by starsze bity znalazly sie na miejscy mlodszych (dolnych)
          
          movlw    b'00000010'
-	 movwf  latch_lcd
+         movwf  latch_lcd
 
       ENDIF
            
@@ -383,12 +390,10 @@ lcd_init_KS066
          clrf     TMR0L
          clrf     TMR0H
          bcf    INTCON,T0IE
-	bcf	INTCON,T0IF
+         bcf	INTCON,T0IF
 ;wylaczam przerwania tmr0         
          
         call     wait  
-    
-         
 
 
      IF (polozenie_danych_lcd == 0) 
@@ -396,7 +401,7 @@ lcd_init_KS066
 ;wysylane musi byc najpierw starsze wyslane, wiec to co jest w rejestrze dane_lcd musi byc obrocone tak by starsze bity znalazly sie na miejscy mlodszych (dolnych)
          
          movlw    b'00000011'
-	movwf	  latch_lcd
+         movwf	  latch_lcd
 
       ENDIF
            
@@ -409,8 +414,8 @@ lcd_init_KS066
             
          
       ENDIF
-;1
- 	bsf      latch_lcd_e,enable
+      ;1
+      bsf      latch_lcd_e,enable
          nop
          nop
          bcf      latch_lcd_e,enable
@@ -423,13 +428,13 @@ lcd_init_KS066
          
 ;2         
         bsf      latch_lcd_e,enable
-         nop
-         nop
-         bcf      latch_lcd_e,enable
+        nop
+        nop
+        bcf      latch_lcd_e,enable
          
         clrf     TMR0L
-         clrf     TMR0H  	
-         call     wait
+        clrf     TMR0H  	
+        call     wait
 
 
 ;3         
@@ -444,7 +449,7 @@ lcd_init_KS066
 ;wysylane musi byc najpierw starsze wyslane, wiec to co jest w rejestrze dane_lcd musi byc obrocone tak by starsze bity znalazly sie na miejscy mlodszych (dolnych)
          
          movlw    b'00000010'
-	movwf	  latch_lcd
+         movwf	  latch_lcd
 
       ENDIF
            
@@ -459,15 +464,13 @@ lcd_init_KS066
       ENDIF
       
       bsf      latch_lcd_e,enable
-         nop
-         nop
-         bcf      latch_lcd_e,enable
-         
-         
-   
-         movlw    set_4bit        
-         
-         call     send4bit
+      nop
+      nop
+      bcf      latch_lcd_e,enable
+      
+      movlw    set_4bit        
+      
+      call     send4bit
          
           ;dla timer0
       ;52 ms
@@ -497,8 +500,8 @@ lcd_init_KS066
          
          
         call     check_busy4bit
-         movlw   set_entry
-         call     send4bit
+        movlw   set_entry
+        call     send4bit
         
         
         return  

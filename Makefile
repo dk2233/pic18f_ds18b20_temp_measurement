@@ -5,8 +5,8 @@ OBJDIR:=_build
 
 SCRIPT:=linker.lkr 
 
-OPT= -c
-#--mpasm-compatible
+OPT= --mpasm-compatible -c
+#
 OUT=temp.hex
 
 FILES = times.asm\

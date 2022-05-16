@@ -16,9 +16,7 @@
 
     include "project_config.inc"
     include "ds18b20_driver.inc"
-    ;INCLUDE  "libs/lcd.inc"
     include "libs/lcd_if.inc"
-    include "ds18b20_driver_if.inc"
 
     include "data.inc"
  CONFIG RETEN=OFF, XINST=OFF, FOSC=INTIO2, CANMX=PORTB, SOSCSEL=DIG, WDTEN = OFF, MSSPMSK = MSK5 ,MCLRE = ON
@@ -38,6 +36,13 @@
     extern inicjacja_ds1820_1
     extern odbierz_pomiary_temp
     extern wykonaj_pomiar_czujnikiem_DS
+
+
+    extern status_ds18b20
+    extern jak_duzo_bajtow_odbieram_z_ds
+    extern bajt_CRC
+    extern n_ds18b20
+    extern dane_odebrane_z_ds
 
 
 
@@ -97,72 +102,6 @@ odczytaj_pomiar_DS1           equ   4
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;markers2
 czy_wlaczyc_przekaznik        equ   0             
              
-             
-	cblock		0x60
-	
-         w_temp
-         status_temp
-         bsr_temp
-         fsrl_temp
-         fsrh_temp
-         fsrl1_temp
-         fsrh1_temp
-         
-       czas
-      
-	
-         markers
-         markers_pomiary   
-         
-         odebrano_liter
-         
-         tmp
-         tmp7
-         
-         czas_oczekiwania_przy_wysylanie_DS
-         
-         
-         n
-         n1
-         
-         
-         zliczanie_pomiaru
-         
-         temp_100
-         temp_10
-         temp_1
-         temp_ulamek
-         
-         reszta_operacji
-         
-         wynik3
-         wynik2
-         wynik1
-         wynik
-         wynik01
-         wynik001
-         
-         dec100
-         dec10
-         dec1
-         
-         dzielonah
-         dzielona
-         
-         ulamekh
-         ulamekl
-         
-         operandh
-         operandl
-         
-         mnozonah
-         mnozonal
-         
-         
-         
-	endc
-
-         
          cblock    0x200
          dane_odebrane
          
@@ -269,6 +208,7 @@ wykryto_t0
          ;incf    do_sekundy,f
 
 ;tu wstawiam ile razy ma byc powtarzana petla co decyduje o ilosci czasu na wlaczenie i wylaczenie - procedura timera
+         movlb   zliczanie_pomiaru
          decf    zliczanie_pomiaru,f
 	;movlw	10h
          
@@ -277,7 +217,8 @@ wykryto_t0
 ;dla 8 Mhz - 20h = 32 * 256*256 = 2097152 czyli oko-o 1s
 
 
-	retfie
+         
+         goto     wyjscie_przerwanie
          
          
          
@@ -290,29 +231,29 @@ wykryto_t4
 	goto	wylacz4
 
 	bsf	PORTD,wyjscie2
-	retfie
+     goto     wyjscie_przerwanie
          
 wylacz4
 	bcf	LATD,wyjscie2
-         
-	retfie  
-         goto     wyjscie_przerwanie
+     goto     wyjscie_przerwanie
          
 wykryto_timer3
          
          bcf      PIR2,TMR3IF
 
-            
+         movlb    ktore_zliczenie_tmr3_do_pomiar   
          decf     ktore_zliczenie_tmr3_do_pomiar,f
          btfss    STATUS,Z
          goto     wykryto_timer3_led
       
          
          movlw       ile_zliczen_TMR3_do_pomiaru
+         movlb       ktore_zliczenie_tmr3_do_pomiar
          movwf       ktore_zliczenie_tmr3_do_pomiar
          
          
          ;jezeli mam ustawiony bit ze wykonuje pomiary to
+         movlb    markers_pomiary
          btfss    markers_pomiary,czy_wykonuje_pomiar_DS1
          bsf      markers_pomiary,czy_czytam_ID_DS1
          
@@ -320,12 +261,14 @@ wykryto_timer3
          bsf      markers_pomiary,odczytaj_pomiar_DS1
          
          
-wykryto_timer3_led             
-         decf     ile_zliczen_TMR3_do_sekundy,f
-         btfss    STATUS,Z
-         retfie
+wykryto_timer3_led           
+     movlb    ile_zliczen_TMR3_do_sekundy
+     decf     ile_zliczen_TMR3_do_sekundy,f
+     btfss    STATUS,Z
+     goto     wyjscie_przerwanie
          
       movlw       ile_zliczen_TMR3
+      movlb ile_zliczen_TMR3_do_sekundy
       movwf ile_zliczen_TMR3_do_sekundy
       
             ;clrf  T3CON
@@ -333,12 +276,7 @@ wykryto_timer3_led
       ;btfsc	LATD,wyjscie_led
 	;goto	wylacz_led_timer3
 
-	;bsf	LATD,wyjscie_led
-       
-         
-         
-         
-	retfie
+    goto     wyjscie_przerwanie
          
 wylacz_led_timer3
 	bcf	LATD,wyjscie_led
@@ -354,8 +292,6 @@ begin
          
 board_start         
         call     lcd_init_KS066
-        movlw    czas_oczekiwania_60us
-        movwf    czas_oczekiwania_przy_wysylanie_DS
            
         call     check_busy4bit
         movlw    linia_gorna
@@ -440,17 +376,21 @@ tablica_znakow2
 
 ;glowna petla
 main
+    movlb   markers_pomiary
       btfsc     markers_pomiary,czy_czytam_ID_DS1
       call      rokaz_transferu_numeru_id_1
       
+    movlb   markers_pomiary
       btfss     markers_pomiary,odczytaj_pomiar_DS1
       goto      main
 
+    movlb   markers_pomiary
       bcf  markers_pomiary,odczytaj_pomiar_DS1
       bcf  markers_pomiary,czekam_na_odczyt_DS1
       bcf  markers_pomiary,czy_wykonuje_pomiar_DS1
 
       call      odbierz_pomiary_temp
+      movlb    bajt_CRC
       movf     bajt_CRC,w
       ;jezeli 0 to jest ok
       bz      odbierz_pomiary_temp_show_data
@@ -468,7 +408,7 @@ main
       
       
 blad_inicjacji_ds
-         
+      movlb    status_ds18b20   
       btfss    status_ds18b20,initialization_not_ok
       return
       bcf   status_ds18b20,initialization_not_ok
@@ -508,18 +448,18 @@ wysylac_blad_inicjacji_ds_loop
 
 
 wysylac_napis_CRC_notOK
-      call     check_busy4bit
-         movlw    linia_dolna
-         call  send
-         ;jezeli nie jest 0
-         movlw       HIGH napis_CRC_no_OK
-         movwf       TBLPTRH
-      
-         movlw       LOW napis_CRC_no_OK
-         movwf       TBLPTRL
+     call     check_busy4bit
+     movlw    linia_dolna
+     call  send
+     ;jezeli nie jest 0
+     movlw       HIGH napis_CRC_no_OK
+     movwf       TBLPTRH
+  
+     movlw       LOW napis_CRC_no_OK
+     movwf       TBLPTRL
       
 wysylac_napis_CRC_notOK_loop        
-        call     check_busy4bit
+    call     check_busy4bit
             
       ;czytam aktualny adres i zwiekszam
          TBLRD       *+
@@ -537,18 +477,21 @@ wysylac_napis_CRC_notOK_loop
 
 rokaz_transferu_numeru_id_1
 ;najpierw wysy³am polecenie odczytu numeru id z jednego ds-a
-
+    
+    movlb  markers_pomiary
       bcf         markers_pomiary,czy_czytam_ID_DS1
 
-      call        check_busy4bit 
-      movlw       display_clear
-      call        send
-            
+      ;do we need everytime to clear display? it blinks
+;      call        check_busy4bit 
+;      movlw       display_clear
+;      call        send
+;            
       call        check_busy4bit 
       ;wylaczam mozliwosc odbioru danych z portu szeregowego
       bcf      RCSTA1,CREN
 
-      movlw    how_many_bytes_receives_ds18
+      movlw    how_many_bytes_rec_ds18_temp
+      movlb    jak_duzo_bajtow_odbieram_z_ds
       movwf    jak_duzo_bajtow_odbieram_z_ds
 
       movlw       HIGH rozkac_id
@@ -561,38 +504,41 @@ rokaz_transferu_numeru_id_1
          ;wykorzystuje procedury które dzia³aj¹ po wybraniu wysy³ania danych przez polecenie
          ;
          ;        "*D1scc44"
-         
+         movlb  markers
          bcf    markers,czy_rozkaz
-         bcf      markers,czy_wysylanie_OK
+         bcf    markers,czy_wysylanie_OK
+
+         movlb   markers_pomiary
+         bsf     markers_pomiary,czy_wywoluje_inicjacje_ds_call
          
-         bsf      markers_pomiary,czy_wywoluje_inicjacje_ds_call
-         
-         call     inicjacja_ds1820_1
+         call   inicjacja_ds1820_1
 
          call   blad_inicjacji_ds
          
-         call     petla_wysylania_rozkazu_1
+         call   petla_wysylania_rozkazu_1
          
+         movlb  markers
          bcf    markers,czy_rozkaz
-         
-         
                   
-         LFSR     FSR1,dane_odebrane_z_ds
+         LFSR   FSR1,dane_odebrane_z_ds
         
          
-         movlw    how_many_bytes_receives_ds18
-         movwf    jak_duzo_bajtow_odbieram_z_ds
-         call     petla_odbioru_rozkazu_1
+         movlw  how_many_bytes_rec_ds18_id
+         movlb  jak_duzo_bajtow_odbieram_z_ds
+         movwf  jak_duzo_bajtow_odbieram_z_ds
+         call   petla_odbioru_rozkazu_1
 
          ;sprawdz CRC
          LFSR     FSR2, dane_odebrane_z_ds
          ;tylko 8 bajtów bo 8 to CRC
-         movlw    8
-         movwf     n
+         movlw    how_many_bytes_rec_ds18_id
+         movlb    n_ds18b20
+         movwf    n_ds18b20
          
          call     check_CRC_DS
          
-         movf     bajt_CRC,w
+         movlb   bajt_CRC
+         movf    bajt_CRC,w
          ;jezeli 0 to jest ok
          bz      rokaz_send_id_1
 
@@ -601,22 +547,25 @@ rokaz_transferu_numeru_id_1
          
 rokaz_send_id_1
          LFSR     FSR1, dane_odebrane_z_ds
-         movlw    how_many_bytes_receives_ds18
-         movwf     n
+         movlw    how_many_bytes_rec_ds18_id
+         movlb    n
+         movwf    n
 
          LFSR     FSR2, id_czujnika_ds
          
 petla_kopiowania_bajt_ID
          movff    POSTINC1,POSTINC2
          
-         decfsz   n,f
-         goto     petla_kopiowania_bajt_ID
+         movlb   n
+         decfsz  n,f
+         goto    petla_kopiowania_bajt_ID
          
          
 
          LFSR     FSR1, dane_odebrane_z_ds
-         movlw    how_many_bytes_receives_ds18
-         movwf     n
+         movlw    how_many_bytes_rec_ds18_id
+         movlb   n
+         movwf   n
          
          call     check_busy4bit
          movlw    linia_gorna
@@ -625,6 +574,7 @@ petla_kopiowania_bajt_ID
          call     petla_wyswietlania_odebr_bajt
          
          
+         movlb   markers_pomiary
          bsf      markers_pomiary,czy_wykonuje_pomiar_DS1
          goto     wykonaj_pomiar_czujnikiem_DS
          bsf      markers_pomiary,czekam_na_odczyt_DS1
@@ -652,8 +602,10 @@ odbierz_pomiary_temp_show_data
          ;call     zamien_dane_na_temp
 
          LFSR     FSR1, dane_odebrane_z_ds
-         movlw    how_many_bytes_receives_ds18
-         movf     jak_duzo_bajtow_odbieram_z_ds,w
+         movlw    how_many_bytes_ds18_temp_show
+         movlb   jak_duzo_bajtow_odbieram_z_ds
+         movwf   jak_duzo_bajtow_odbieram_z_ds
+         movlb  n
          movwf     n
          
          call     check_busy4bit
@@ -661,8 +613,7 @@ odbierz_pomiary_temp_show_data
          call  send
          
          call     petla_wyswietlania_odebr_bajt
-         
-         return
+         goto main
 
 
 
@@ -716,13 +667,9 @@ petla_wyswietlania_odebr_bajt
          
             
          incf     FSR1L,f
+         movlb    n
          decfsz   n,f
          goto     petla_wyswietlania_odebr_bajt
-         
-         
-         
-         
-         
         return
 
 

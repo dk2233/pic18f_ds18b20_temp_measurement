@@ -1,5 +1,4 @@
 ;external function
-    extern ile_zliczen_TMR3_do_sekundy
     extern check_CRC_DS
     extern petla_wysylania_rozkazu_1
     extern petla_odbioru_rozkazu_1

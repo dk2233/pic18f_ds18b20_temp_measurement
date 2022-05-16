@@ -8,7 +8,7 @@ WAIT_CODE       CODE
 czekaj_2_sekundy
 ;ustawiam TMR0 - na maks zliczanie
 ;256*256*256*4/20e6
-       movlw	b'10000111'
+      movlw	b'10000111'
 ;1,67 s
       movwf	T0CON
       

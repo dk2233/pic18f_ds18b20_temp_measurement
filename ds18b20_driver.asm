@@ -5,10 +5,18 @@
 
     ;.file "init.asm"
     Global bajt_CRC
+    Global n_ds18b20
     Global dane_odebrane_z_ds
     Global status_ds18b20
+    Global inicjacja_ds1820_1
+    Global petla_wysylania_rozkazu_1
+    Global petla_odbioru_rozkazu_1
+    Global check_CRC_DS
+    Global odbierz_pomiary_temp
+    Global wykonaj_pomiar_czujnikiem_DS
+    Global jak_duzo_bajtow_odbieram_z_ds
 
-GPR_DATA   UDATA
+GPR_DS18B20   UDATA  0x200
 n_ds18b20   RES   1
 bajt_CRC    RES   1
 jak_duzo_bajtow_odbieram_z_ds   RES   1
@@ -19,12 +27,6 @@ dane_odebrane_z_ds   res  30
 
 
 
-    Global inicjacja_ds1820_1
-    Global petla_wysylania_rozkazu_1
-    Global petla_odbioru_rozkazu_1
-    Global check_CRC_DS
-    Global odbierz_pomiary_temp
-    Global wykonaj_pomiar_czujnikiem_DS
 
 DS18B20_CODE    CODE    
 PIN_HI_1
@@ -84,7 +86,6 @@ inicjacja_ds1820_1
          
 ;ustawiam tmr2 na zliczanie 2 
          movlw    czas_oczekiwania_480us
-         
          movwf    PR2
          
 ;ustawiam 480us         
@@ -157,16 +158,17 @@ inicjacja_ok_1
          
 ;DS18B20
 petla_wysylania_rozkazu_1
-         TBLRD       *+
-      
-         movf        TABLAT,w
+         TBLRD    *+
+     
+         movf     TABLAT,w
          btfsc    STATUS,Z
          return                     
          
          ;jezeli 0 to skocz do wyswietlania slowa z linii 2
-         movwf     polecenie_wysylane
+         movlb  polecenie_wysylane
+         movwf    polecenie_wysylane
          
-         movlw     czas_oczekiwania_60us      
+         movlw    czas_oczekiwania_60us      
          ;ustawiam TMR2 na odbieranie
          movwf    PR2
          
@@ -176,10 +178,11 @@ petla_wysylania_rozkazu_1
          bcf      PIR1,TMR2IF
          clrf      TMR2
          movlw     8
+         movlb     n_ds18b20
          movwf     n_ds18b20
          
 petla_sending_pomiar_1
-
+        movlb     polecenie_wysylane
         btfss     polecenie_wysylane,0
         call      send_zero_1
         btfsc     polecenie_wysylane,0
@@ -188,7 +191,7 @@ petla_sending_pomiar_1
         
         bcf       STATUS,C
         rrcf       polecenie_wysylane,f
-        
+        movlb     n_ds18b20
         decfsz    n_ds18b20,f
         goto      petla_sending_pomiar_1
          
@@ -236,6 +239,7 @@ petla_odbioru_rozkazu_1
 ;normalnie jezeli ds1820 nic nie wysyla to jest caly czas 1 bez rzadnych zmian
 petla_odbioru_z_ds1820_1
         movlw     8
+        movlb     n_ds18b20
         movwf     n_ds18b20
         clrf      TMR2
         clrf      INDF1
@@ -279,12 +283,13 @@ czekam_na_kolejny_bit_DS_1
         goto      czekam_na_kolejny_bit_DS_1
         
         bcf       PIR1,TMR2IF
-        
+        movlb     n_ds18b20
         decfsz    n_ds18b20,f
         goto      petla_stan_odebranego_bitu_1
         incf      FSR1L,f
         
 ;czy juz przeszly wszystkie bajty z DS
+        movlb     jak_duzo_bajtow_odbieram_z_ds
         decfsz    jak_duzo_bajtow_odbieram_z_ds,f
         goto      petla_odbioru_z_ds1820_1
 
@@ -299,6 +304,7 @@ wykonaj_pomiar_czujnikiem_DS
         
 
          movlw    9
+         movlb    jak_duzo_bajtow_odbieram_z_ds
          movwf    jak_duzo_bajtow_odbieram_z_ds
          
          movlw       HIGH rozkaz_pomiaru
@@ -352,7 +358,8 @@ odbierz_pomiary_temp
          
          LFSR     FSR1,dane_odebrane_z_ds
         
-         movlw    how_many_bytes_receives_ds18
+         movlw    how_many_bytes_rec_ds18_temp
+         movlb   jak_duzo_bajtow_odbieram_z_ds
          movwf    jak_duzo_bajtow_odbieram_z_ds
          call     petla_odbioru_rozkazu_1
          
@@ -361,7 +368,9 @@ odbierz_pomiary_temp
          LFSR     FSR2, dane_odebrane_z_ds
          
          ;9 bajt to CRC
-         movlw    9
+         movlw   how_many_bytes_rec_ds18_temp 
+         movlb  n_ds18b20
+         movwf  n_ds18b20
          call     check_CRC_DS
         
          return
@@ -374,6 +383,7 @@ rozkaz_odczytu
         
 
 check_CRC_DS 
+        movlb bajt_CRC
          clrf  bajt_CRC
          ;movlw    
    
@@ -407,8 +417,10 @@ check_CRC_DS_loop
          btfsc bajt_CRC,7 
          xorlw 0x8c 
          
+         movlb  n_ds18b20
          movwf bajt_CRC   
          
+         movlb  n_ds18b20
          decfsz n_ds18b20,f 
          goto check_CRC_DS_loop         
                      
