@@ -12,6 +12,9 @@
     Global tmp_lcd
     Global dane_lcd
     Global n_lcd
+    Global arg1
+    
+    
 
     
 GPR_MAIN_DATA   UDATA    0x60 
@@ -74,3 +77,6 @@ ile_zliczen_TMR3_do_sekundy  RES 1
 dane_lcd    RES 1
 tmp_lcd    RES 1
 n_lcd    RES 1
+
+
+arg1    RES   1

@@ -9,13 +9,13 @@ OPT= --mpasm-compatible -c
 #
 OUT=temp.hex
 
-FILES = times.asm\
-	   	init.asm\
-	  	libs/lcd4bit.asm\
-		ds18b20_driver.asm\
+FILES = times.asm \
+	   	init.asm \
+	  	libs/lcd4bit.asm \
+		libs/letters.asm \
+		ds18b20_driver.asm \
 		temp_18f_ds18b20.asm
  
-#libs/lcd4bit.asm
 
 OBJECTS:= $(patsubst %.asm, %.o, $(FILES))
 #OBJS := %(addprefix $(OBJDIR)/,
@@ -40,5 +40,7 @@ $(OUT): $(OBJECTS)
 clean:
 	rm *.lst 
 	rm *.o
+	rm FOLDERS/*.o
+	rm FOLDERS/*.lst
 	rm *.cod
 	rm *.hex

@@ -9,7 +9,7 @@
 
     global init_main
 
-START_SECTION  code
+START_SECTION  CODE
 init_main
 ;prescaling set to 1:256
 	

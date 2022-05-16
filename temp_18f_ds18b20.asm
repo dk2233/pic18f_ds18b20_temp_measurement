@@ -36,6 +36,7 @@
     extern inicjacja_ds1820_1
     extern odbierz_pomiary_temp
     extern wykonaj_pomiar_czujnikiem_DS
+    extern zamien_na_hex
 
 
     extern status_ds18b20
@@ -618,37 +619,10 @@ odbierz_pomiary_temp_show_data
 
 
 
-
-
-
-
-
-
-
-
-
          
-         
-zamien_na_hex
-;jezeli po odjeciu 0a jest niezanaczony bit C
-;to znaczy ze dodaj 
-         movwf    tmp7
-         movlw    0x0a
-         subwf    tmp7,w
-         btfss    STATUS,C
-         goto     cyfry_0_9
-         movf     tmp7,w
-         addlw    0x37
-         return
-cyfry_0_9         
-         movf     tmp7,w
-         addlw    0x30
-         return
          
 
 petla_wyswietlania_odebr_bajt        
-        
-          
          call        check_busy4bit 
           
          swapf    INDF1,w
